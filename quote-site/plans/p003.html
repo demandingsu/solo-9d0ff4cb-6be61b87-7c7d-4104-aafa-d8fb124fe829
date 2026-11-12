@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>P003 沪电零售 · 峰谷阶梯标准版 - 套餐详情</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header>
+  <h1>公开电价套餐报价站</h1>
+</header>
+<main class="plan-detail" data-page="plan-detail" data-plan-id="P003">
+  <h2 data-plan-name>沪电零售 · 峰谷阶梯标准版</h2>
+  <div class="meta-row">供应商：<span data-supplier>沪电零售</span></div>
+  <div class="meta-row">
+    适用地区：
+    <span class="tag tag-region" data-region="上海">上海</span>
+  </div>
+  <div class="meta-row">月基本费：<strong data-base-fee-cny="80.00">¥80.00 / 月</strong></div>
+
+  <h3>峰段费率（元 / 千瓦时）</h3>
+  <table class="rate-table" data-rate-kind="peak">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="250" data-rate-cny-per-kwh="1.00"><td>峰档1</td><td>0</td><td>250</td><td>1.00</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="250" data-tier-to-kwh="450" data-rate-cny-per-kwh="1.15"><td>峰档2</td><td>250</td><td>450</td><td>1.15</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="450" data-tier-to-kwh="" data-rate-cny-per-kwh="1.28"><td>峰档3</td><td>450</td><td>无上限</td><td>1.28</td></tr>
+    </tbody>
+  </table>
+
+  <h3>谷段费率（元 / 千瓦时）</h3>
+  <table class="rate-table" data-rate-kind="valley">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="250" data-rate-cny-per-kwh="0.35"><td>谷档1</td><td>0</td><td>250</td><td>0.35</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="250" data-tier-to-kwh="500" data-rate-cny-per-kwh="0.45"><td>谷档2</td><td>250</td><td>500</td><td>0.45</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="500" data-tier-to-kwh="" data-rate-cny-per-kwh="0.58"><td>谷档3</td><td>500</td><td>无上限</td><td>0.58</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note">说明：峰、谷电量分别按各自档位逐档计费，月基本费按月固定收取。本站数据为演示用虚构数据。</p>
+  <p><a href="../index.html">&laquo; 返回列表第1页</a></p>
+</main>
+</body>
+</html>

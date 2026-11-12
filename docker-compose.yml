@@ -1,0 +1,35 @@
+services:
+  quote-site:
+    # 本地报价站：纯静态页面，由 nginx 提供，容器内即可离线访问
+    image: nginx:1.27-alpine
+    container_name: quote-site
+    ports:
+      - "8080:80"
+    volumes:
+      - ./quote-site:/usr/share/nginx/html:ro
+      - ./quote-site/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/index.html"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: energy-plan-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      quote-site:
+        condition: service_healthy
+    environment:
+      # API 通过容器网络访问报价站，无需外网
+      QUOTE_SITE_URL: "http://quote-site/index.html"
+
+# 离线演示：
+#   docker compose up --build
+#   curl -X POST http://localhost:8000/api/v1/compare-plans \
+#     -H "Content-Type: application/json" \
+#     --data @demo/request.json

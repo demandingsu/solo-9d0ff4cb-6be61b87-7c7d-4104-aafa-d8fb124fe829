@@ -1,0 +1,18 @@
+{
+  "list_url": "http://quote-site/index.html",
+  "region": "上海",
+  "monthly_usage": [
+    {"month": 1,  "peak_kwh": 260, "valley_kwh": 360},
+    {"month": 2,  "peak_kwh": 240, "valley_kwh": 340},
+    {"month": 3,  "peak_kwh": 280, "valley_kwh": 380},
+    {"month": 4,  "peak_kwh": 300, "valley_kwh": 400},
+    {"month": 5,  "peak_kwh": 330, "valley_kwh": 430},
+    {"month": 6,  "peak_kwh": 380, "valley_kwh": 480},
+    {"month": 7,  "peak_kwh": 420, "valley_kwh": 520},
+    {"month": 8,  "peak_kwh": 410, "valley_kwh": 510},
+    {"month": 9,  "peak_kwh": 360, "valley_kwh": 460},
+    {"month": 10, "peak_kwh": 310, "valley_kwh": 410},
+    {"month": 11, "peak_kwh": 280, "valley_kwh": 380},
+    {"month": 12, "peak_kwh": 270, "valley_kwh": 370}
+  ]
+}

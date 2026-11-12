@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>P002 华东安心电 · 峰谷套餐 B - 套餐详情</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header>
+  <h1>公开电价套餐报价站</h1>
+</header>
+<main class="plan-detail" data-page="plan-detail" data-plan-id="P002">
+  <h2 data-plan-name>华东安心电 · 峰谷套餐 B</h2>
+  <div class="meta-row">供应商：<span data-supplier>安能电力</span></div>
+  <div class="meta-row">
+    适用地区：
+    <span class="tag tag-region" data-region="上海">上海</span>
+    <span class="tag tag-region" data-region="华东">华东</span>
+  </div>
+  <div class="meta-row">月基本费：<strong data-base-fee-cny="45.00">¥45.00 / 月</strong></div>
+
+  <h3>峰段费率（元 / 千瓦时）</h3>
+  <table class="rate-table" data-rate-kind="peak">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="150" data-rate-cny-per-kwh="1.12"><td>峰档1</td><td>0</td><td>150</td><td>1.12</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="150" data-tier-to-kwh="" data-rate-cny-per-kwh="1.25"><td>峰档2</td><td>150</td><td>无上限</td><td>1.25</td></tr>
+    </tbody>
+  </table>
+
+  <h3>谷段费率（元 / 千瓦时）</h3>
+  <table class="rate-table" data-rate-kind="valley">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="200" data-rate-cny-per-kwh="0.48"><td>谷档1</td><td>0</td><td>200</td><td>0.48</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="200" data-tier-to-kwh="" data-rate-cny-per-kwh="0.60"><td>谷档2</td><td>200</td><td>无上限</td><td>0.60</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note">说明：峰、谷电量分别按各自档位逐档计费，月基本费按月固定收取。本站数据为演示用虚构数据。</p>
+  <p><a href="../index.html">&laquo; 返回列表第1页</a></p>
+</main>
+</body>
+</html>

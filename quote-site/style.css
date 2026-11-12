@@ -1,0 +1,18 @@
+body { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1f2d3d; }
+header { background: #0b5cab; color: #fff; padding: 18px 32px; }
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.plan-card { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px; }
+.plan-card h3 { margin: 0 0 8px; }
+.plan-meta { color: #5b6b7b; font-size: 14px; margin-bottom: 10px; }
+.tag { display: inline-block; background: #ecf3fc; color: #0b5cab; border-radius: 4px; padding: 2px 8px; margin-right: 8px; font-size: 13px; }
+.plan-link { display: inline-block; color: #0b5cab; text-decoration: none; font-weight: 600; }
+.pagination { margin: 24px 0; }
+.pagination a, .pagination span { margin-right: 12px; }
+table.rate-table { border-collapse: collapse; width: 100%; margin: 12px 0 24px; background: #fff; }
+table.rate-table th, table.rate-table td { border: 1px solid #c4ccd4; padding: 8px 12px; text-align: right; }
+table.rate-table th { background: #eef2f6; }
+table.rate-table td:first-child, table.rate-table th:first-child { text-align: left; }
+.plan-detail { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 24px 32px; }
+.meta-row { margin: 8px 0; }
+.note { background: #fff8e6; border: 1px solid #f0d9a0; padding: 10px 14px; border-radius: 6px; font-size: 13px; }
+.error-box { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 40px; text-align: center; }
