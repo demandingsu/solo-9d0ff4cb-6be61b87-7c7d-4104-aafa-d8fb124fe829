@@ -5,9 +5,17 @@
 - 分页：nav[data-pagination] 内 a[rel=next]
 - 详情页：main[data-page=plan-detail]，费率表 table.rate-table[data-rate-kind]，
   档位 tr[data-rate-tier] 携带起止电量与费率数据属性
+
+费率采集约定（与资格判定、计费的衔接）：
+- 公布档位费率留空/不可解析 -> RateTier.rate_cny_per_kwh=None，并登记 missing_tier_rate；
+- 费率为 inf/-inf/nan 等非有限数 -> 同样置 None，并登记 invalid_rate_value（inf 不进入计费数据）；
+- 问题档位不会被静默丢弃，保证其后的档位区间仍可参与结构与超档校验；
+- 所有问题汇总在 PlanDetail.rate_issues，由 billing.check_eligibility 排除整份套餐，
+  排除原因与详情来源（detail_url）一并返回给调用方。
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from .fetcher import FetchError, fetch_url, join_url
@@ -21,7 +29,18 @@ class RateTier:
     index: int
     lower_kwh: float
     upper_kwh: float | None  # None 表示无上限
-    rate_cny_per_kwh: float
+    # None 表示该公布档位缺少可用费率（留空或不是有限数），由资格判定排除整份套餐。
+    rate_cny_per_kwh: float | None
+
+
+@dataclass
+class RateParseIssue:
+    """费率采集阶段记录的单个问题档位，供资格判定生成排除原因与详情。"""
+
+    rate_kind: str  # peak | valley
+    tier_index: int
+    issue: str  # missing_tier_rate | invalid_rate_value | invalid_tier_structure
+    message: str
 
 
 @dataclass
@@ -35,6 +54,7 @@ class PlanDetail:
     valley_tiers: list[RateTier]
     detail_url: str
     list_url: str
+    rate_issues: list[RateParseIssue] = field(default_factory=list)
 
 
 @dataclass
@@ -95,17 +115,56 @@ def parse_list_page(markup: str, page_url: str) -> tuple[list[PlanListEntry], st
     return entries, next_url
 
 
-def _parse_tiers(table: Element) -> list[RateTier]:
+def _parse_tiers(table: Element, rate_kind: str) -> tuple[list[RateTier], list[RateParseIssue]]:
+    """解析一张费率表，同时逐档记录费率/结构问题。
+
+    与旧实现不同：缺费率或费率不是有限数的公布档位不再静默丢弃，
+    而是以 rate=None 保留在表中并登记问题，确保资格判定能排除整份套餐，
+    且问题档位之后的档位区间不会被误判为“超已公布档位”。
+    """
     tiers: list[RateTier] = []
+    issues: list[RateParseIssue] = []
     for idx, row in enumerate(table.find_all(tag="tr", attr="data-rate-tier"), start=1):
-        lower = _parse_float(row.get("data-tier-from-kwh"))
+        lower_raw = row.get("data-tier-from-kwh")
         upper = _parse_float(row.get("data-tier-to-kwh"))  # 空属性 -> None（无上限）
-        rate = _parse_float(row.get("data-rate-cny-per-kwh"))
-        if lower is None or rate is None:
-            # 档位缺少下限或费率：数据属性不完整，跳过该档，后续校验会拦截。
+        rate_raw = row.get("data-rate-cny-per-kwh")
+        lower = _parse_float(lower_raw)
+        rate = _parse_float(rate_raw)
+        if lower is None:
+            issues.append(
+                RateParseIssue(
+                    rate_kind,
+                    idx,
+                    "invalid_tier_structure",
+                    f"第 {idx} 档缺少可解析的起始电量（data-tier-from-kwh={lower_raw!r}）",
+                )
+            )
             continue
-        tiers.append(RateTier(index=idx, lower_kwh=lower, upper_kwh=upper, rate_cny_per_kwh=rate))
-    return tiers
+        if rate is None:
+            # 留空或内容无法解析为数字：公布档位缺费率。
+            issues.append(
+                RateParseIssue(
+                    rate_kind,
+                    idx,
+                    "missing_tier_rate",
+                    f"第 {idx} 档（{lower:g} kWh 起）未公布费率（data-rate-cny-per-kwh={rate_raw!r}）",
+                )
+            )
+        elif not math.isfinite(rate):
+            # inf / -inf / nan 均不是可计费的有限费率。
+            issues.append(
+                RateParseIssue(
+                    rate_kind,
+                    idx,
+                    "invalid_rate_value",
+                    f"第 {idx} 档（{lower:g} kWh 起）费率不是有限数：{rate_raw!r}",
+                )
+            )
+            rate = None
+        tiers.append(
+            RateTier(index=idx, lower_kwh=lower, upper_kwh=upper, rate_cny_per_kwh=rate)
+        )
+    return tiers, issues
 
 
 def parse_detail_page(markup: str, detail_url: str, list_url: str) -> PlanDetail:
@@ -121,17 +180,21 @@ def parse_detail_page(markup: str, detail_url: str, list_url: str) -> PlanDetail
     supplier = supplier_node.text if supplier_node is not None else None
     regions = [tag.get("data-region", "") for tag in main.find_all(attr="data-region")]
     regions = [r for r in regions if r]
-    base_fee = _parse_float(main.find(attr="data-base-fee-cny").get("data-base-fee-cny")) \
-        if main.find(attr="data-base-fee-cny") is not None else None
+    base_fee_node = main.find(attr="data-base-fee-cny")
+    base_fee = _parse_float(base_fee_node.get("data-base-fee-cny")) if base_fee_node is not None else None
 
+    rate_issues: list[RateParseIssue] = []
     peak_tiers: list[RateTier] = []
     valley_tiers: list[RateTier] = []
     for table in main.find_all(tag="table", attr="class", attr_value="rate-table"):
         kind = table.get("data-rate-kind")
-        tiers = _parse_tiers(table)
+        if kind not in ("peak", "valley"):
+            continue
+        tiers, issues = _parse_tiers(table, kind)
+        rate_issues.extend(issues)
         if kind == "peak":
             peak_tiers = tiers
-        elif kind == "valley":
+        else:
             valley_tiers = tiers
 
     return PlanDetail(
@@ -139,11 +202,13 @@ def parse_detail_page(markup: str, detail_url: str, list_url: str) -> PlanDetail
         name=name,
         supplier=supplier,
         regions=regions,
-        base_fee_cny=base_fee if base_fee is not None else float("nan"),
+        # 缺失或非有限的月基本费统一以 NaN 表示，由资格判定排除并说明原因。
+        base_fee_cny=base_fee if base_fee is not None and math.isfinite(base_fee) else float("nan"),
         peak_tiers=peak_tiers,
         valley_tiers=valley_tiers,
         detail_url=detail_url,
         list_url=list_url,
+        rate_issues=rate_issues,
     )
 
 

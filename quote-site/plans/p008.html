@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>P008 沪电零售 · 峰谷阶梯待补版 - 套餐详情</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header>
+  <h1>公开电价套餐报价站</h1>
+</header>
+<main class="plan-detail" data-page="plan-detail" data-plan-id="P008">
+  <h2 data-plan-name>沪电零售 · 峰谷阶梯待补版（末档费率留空）</h2>
+  <div class="meta-row">供应商：<span data-supplier>沪电零售</span></div>
+  <div class="meta-row">
+    适用地区：
+    <span class="tag tag-region" data-region="上海">上海</span>
+  </div>
+  <div class="meta-row">月基本费：<strong data-base-fee-cny="75.00">¥75.00 / 月</strong></div>
+
+  <h3>峰段费率（元 / 千瓦时，按当月峰用电量分段计费）</h3>
+  <table class="rate-table" data-rate-kind="peak">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="250" data-rate-cny-per-kwh="0.96"><td>峰档1</td><td>0</td><td>250</td><td>0.96</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="250" data-tier-to-kwh="450" data-rate-cny-per-kwh="1.10"><td>峰档2</td><td>250</td><td>450</td><td>1.10</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="450" data-tier-to-kwh="" data-rate-cny-per-kwh=""><td>峰档3</td><td>450</td><td>无上限</td><td>待公布</td></tr>
+    </tbody>
+  </table>
+
+  <h3>谷段费率（元 / 千瓦时，按当月谷用电量分段计费）</h3>
+  <table class="rate-table" data-rate-kind="valley">
+    <thead><tr><th>档位</th><th>起（千瓦时，含）</th><th>止（千瓦时，不含）</th><th>费率（元/千瓦时）</th></tr></thead>
+    <tbody>
+      <tr data-rate-tier data-tier-from-kwh="0" data-tier-to-kwh="300" data-rate-cny-per-kwh="0.36"><td>谷档1</td><td>0</td><td>300</td><td>0.36</td></tr>
+      <tr data-rate-tier data-tier-from-kwh="300" data-tier-to-kwh="" data-rate-cny-per-kwh="0.50"><td>谷档2</td><td>300</td><td>无上限</td><td>0.50</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note">说明：峰段末档（450 千瓦时以上）费率尚未公布，属于不完整报价；即使门店用电量未进入该档，也不得参与比价。本站数据为演示用虚构数据。</p>
+  <p><a href="../index-2.html">&laquo; 返回列表第2页</a></p>
+</main>
+</body>
+</html>

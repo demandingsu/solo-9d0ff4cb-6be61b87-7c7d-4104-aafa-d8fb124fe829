@@ -37,7 +37,7 @@ class ScraperTest(unittest.TestCase):
         self.assertEqual(result.visited_list_urls[0], LIST_URL)
         self.assertEqual(len(result.visited_list_urls), 2, "应跟随 next 链接抓取两页列表")
         plan_ids = {p.plan_id for p in result.plans}
-        self.assertEqual(plan_ids, {"P001", "P002", "P003", "P004", "P005", "P006"})
+        self.assertEqual(plan_ids, {"P001", "P002", "P003", "P004", "P005", "P006", "P008", "P009"})
         # P007 详情页故意缺失 -> 404 失败记录
         self.assertEqual(len(result.failures), 1)
         failure = result.failures[0]
@@ -61,6 +61,17 @@ class ScraperTest(unittest.TestCase):
         p006 = next(p for p in result.plans if p.plan_id == "P006")
         self.assertEqual(p006.peak_tiers[0].upper_kwh, 150.0)
         self.assertEqual(p006.valley_tiers[0].upper_kwh, 200.0)
+        # P008 峰段末档费率留空：档位仍保留（区间不被吞掉），费率为 None 并登记缺费率问题
+        p008 = next(p for p in result.plans if p.plan_id == "P008")
+        self.assertEqual(len(p008.peak_tiers), 3)
+        self.assertIsNone(p008.peak_tiers[-1].upper_kwh)
+        self.assertIsNone(p008.peak_tiers[-1].rate_cny_per_kwh)
+        self.assertEqual([i.issue for i in p008.rate_issues], ["missing_tier_rate"])
+        self.assertEqual(p008.rate_issues[0].rate_kind, "peak")
+        # P009 峰段末档费率为 inf：解析为 None 并登记非有限费率问题，inf 不进入计费数据
+        p009 = next(p for p in result.plans if p.plan_id == "P009")
+        self.assertIsNone(p009.peak_tiers[-1].rate_cny_per_kwh)
+        self.assertEqual([i.issue for i in p009.rate_issues], ["invalid_rate_value"])
 
 
 class EligibilityTest(unittest.TestCase):

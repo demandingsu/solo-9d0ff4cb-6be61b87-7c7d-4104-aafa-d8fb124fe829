@@ -3,16 +3,18 @@
 规则：
 1. 每月峰、谷电量分别沿各自费率表逐档计费（区间为 [下限, 上限)，上限为 None 即无上限）。
 2. 每月另加固定月基本费，12 个月合计为年度成本。
-3. 套餐缺少任一类费率、月基本费缺失，或任一月峰/谷电量超出已公布档位，
-   该套餐不得参与比较，需给出排除原因。
+3. 套餐缺少任一类费率表、任一公布档位缺费率或费率不是有限数、月基本费缺失或非有限，
+   或任一月峰/谷电量超出已公布档位，该套餐不得参与比较，需给出排除原因与详情来源。
+   注意：缺费率/非有限费率的档位即使当月用量未进入，也同样排除整份套餐。
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 
-from .scraper import PlanDetail, RateTier
+from .scraper import PlanDetail, RateTier, RateParseIssue
 
 TWO_PLACES = Decimal("0.01")
 
@@ -24,6 +26,8 @@ def _d(value: float) -> Decimal:
 class ExclusionReason(str, Enum):
     REGION_NOT_APPLICABLE = "region_not_applicable"
     MISSING_RATES = "missing_rates"
+    MISSING_TIER_RATE = "missing_tier_rate"
+    INVALID_RATE_VALUE = "invalid_rate_value"
     MISSING_BASE_FEE = "missing_base_fee"
     USAGE_EXCEEDS_TIERS = "usage_exceeds_published_tiers"
     INVALID_TIER_STRUCTURE = "invalid_tier_structure"
@@ -104,6 +108,9 @@ def _charge_along_tiers(usage_kwh: float, tiers: list[RateTier]) -> tuple[list[T
         upper = _d(tier.upper_kwh) if tier.upper_kwh is not None else None
         if remaining <= 0:
             break
+        if tier.rate_cny_per_kwh is None or not math.isfinite(tier.rate_cny_per_kwh):
+            # 资格校验本应拦截此类套餐；此处为防御性保护，避免 inf/nan 进入 Decimal 后抛 InvalidOperation。
+            raise ValueError(f"档位 {tier.index} 缺少有效费率，无法计费")
         if upper is None:
             band = remaining  # 无上限档承接全部剩余电量
         else:
@@ -127,6 +134,25 @@ def _charge_along_tiers(usage_kwh: float, tiers: list[RateTier]) -> tuple[list[T
     return charges, total
 
 
+def _rate_issue_exclusion(plan: PlanDetail) -> EligibilityResult | None:
+    """公布档位缺费率或费率不是有限数时，整份套餐不得参与比较。"""
+    if not plan.rate_issues:
+        return None
+    # 同一套餐可能同时存在多类问题，优先按“缺费率 → 费率非有限 → 结构问题”报告。
+    priority = {
+        "missing_tier_rate": ExclusionReason.MISSING_TIER_RATE.value,
+        "invalid_rate_value": ExclusionReason.INVALID_RATE_VALUE.value,
+        "invalid_tier_structure": ExclusionReason.INVALID_TIER_STRUCTURE.value,
+    }
+    chosen: RateParseIssue = min(
+        plan.rate_issues, key=lambda item: list(priority).index(item.issue)
+    )
+    kind_label = "峰段" if chosen.rate_kind == "peak" else "谷段"
+    reason = priority[chosen.issue]
+    detail = f"{kind_label}费率表{chosen.message}；详情来源：{plan.detail_url}"
+    return EligibilityResult(False, reason, detail)
+
+
 def check_eligibility(plan: PlanDetail, region: str, monthly_usage: list[dict]) -> EligibilityResult:
     if not region_matches(plan.regions, region):
         return EligibilityResult(False, ExclusionReason.REGION_NOT_APPLICABLE.value,
@@ -137,13 +163,44 @@ def check_eligibility(plan: PlanDetail, region: str, monthly_usage: list[dict]) 
             missing.append("峰段费率")
         if not plan.valley_tiers:
             missing.append("谷段费率")
-        return EligibilityResult(False, ExclusionReason.MISSING_RATES.value, "缺少" + "、".join(missing))
+        return EligibilityResult(False, ExclusionReason.MISSING_RATES.value,
+                                 "缺少" + "、".join(missing) + f"；详情来源：{plan.detail_url}")
+    # 只要任一公布档位缺费率或费率不是有限数，整份套餐排除（与用量是否进入该档无关）。
+    issue_result = _rate_issue_exclusion(plan)
+    if issue_result is not None:
+        return issue_result
+    # 防御性兜底：即使费率问题未经采集阶段登记（如手工构造的数据），
+    # 资格判定仍直接检查每张费率表上的费率值。
+    for kind_label, tiers in (("峰段", plan.peak_tiers), ("谷段", plan.valley_tiers)):
+        for tier in tiers:
+            if tier.rate_cny_per_kwh is None:
+                return EligibilityResult(
+                    False,
+                    ExclusionReason.MISSING_TIER_RATE.value,
+                    f"{kind_label}费率表第 {tier.index} 档（{tier.lower_kwh:g} kWh 起）未公布费率"
+                    f"；详情来源：{plan.detail_url}",
+                )
+            if not math.isfinite(tier.rate_cny_per_kwh):
+                return EligibilityResult(
+                    False,
+                    ExclusionReason.INVALID_RATE_VALUE.value,
+                    f"{kind_label}费率表第 {tier.index} 档费率不是有限数：{tier.rate_cny_per_kwh}"
+                    f"；详情来源：{plan.detail_url}",
+                )
     for kind, tiers in (("峰段", plan.peak_tiers), ("谷段", plan.valley_tiers)):
         problem = validate_tier_structure(tiers)
         if problem:
-            return EligibilityResult(False, ExclusionReason.INVALID_TIER_STRUCTURE.value, f"{kind}{problem}")
-    if plan.base_fee_cny != plan.base_fee_cny:  # NaN 检测
-        return EligibilityResult(False, ExclusionReason.MISSING_BASE_FEE.value, "详情页未公布月基本费")
+            return EligibilityResult(
+                False,
+                ExclusionReason.INVALID_TIER_STRUCTURE.value,
+                f"{kind}{problem}；详情来源：{plan.detail_url}",
+            )
+    if not math.isfinite(plan.base_fee_cny):  # NaN/inf：月基本费缺失或不是有限数
+        return EligibilityResult(
+            False,
+            ExclusionReason.MISSING_BASE_FEE.value,
+            f"详情页未公布有效的月基本费；详情来源：{plan.detail_url}",
+        )
 
     for item in monthly_usage:
         month = item["month"]
@@ -163,12 +220,15 @@ def check_eligibility(plan: PlanDetail, region: str, monthly_usage: list[dict]) 
 
 def bill_plan(plan: PlanDetail, monthly_usage: list[dict]) -> list[MonthlyBill]:
     """对已通过资格校验的套餐逐月计费。"""
+    if not math.isfinite(plan.base_fee_cny):
+        raise ValueError("月基本费缺失或不是有限数，无法计费")
     base_fee = _d(plan.base_fee_cny).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
     bills: list[MonthlyBill] = []
     for item in monthly_usage:
         peak_charges, peak_total = _charge_along_tiers(item["peak_kwh"], plan.peak_tiers)
         valley_charges, valley_total = _charge_along_tiers(item["valley_kwh"], plan.valley_tiers)
-        assert peak_total is not None and valley_total is not None  # 资格校验已排除超档
+        if peak_total is None or valley_total is None:
+            raise ValueError("用电量超出已公布档位，无法计费（该套餐应在资格判定阶段被排除）")
         month_total = (peak_total + valley_total + base_fee).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
         bills.append(
             MonthlyBill(
